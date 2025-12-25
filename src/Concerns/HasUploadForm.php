@@ -60,7 +60,7 @@ trait HasUploadForm
         return $this;
     }
 
-    private function addField(Field $field, bool $isAfterUpload = false)
+    private function addField(Field $field, bool $isAfterUpload = false): static
     {
         if ($isAfterUpload) {
             $this->afterUploadFieldFormFields[] = $field;

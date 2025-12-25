@@ -85,12 +85,12 @@ class DefaultRelationshipImport implements ToCollection, WithHeadingRow
                     $data = Arr::except($data, $pivotColumns);
                 }
 
-                if ($this->table && ($translatableContentDriver = $this->table->makeTranslatableContentDriver())) {
-                    $record = $translatableContentDriver->makeRecord($this->model, $data);
-                } else {
+//                if ($this->table && ($translatableContentDriver = $this->table->makeTranslatableContentDriver())) {
+//                    $record = $translatableContentDriver->makeRecord($this->model, $data);
+//                } else {
                     $record = new $this->model;
                     $record->fill($data);
-                }
+//                }
 
                 if (
                     (! $this->relationship) ||

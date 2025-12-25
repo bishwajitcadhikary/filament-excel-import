@@ -4,6 +4,9 @@ namespace EightyNine\ExcelImport\Concerns;
 
 use Closure;
 use EightyNine\ExcelImport\DefaultImport;
+use EightyNine\ExcelImport\Exceptions\ImportStoppedException;
+use Exception;
+use Filament\Notifications\Notification;
 use Maatwebsite\Excel\Facades\Excel;
 
 trait HasExcelImportAction
@@ -17,6 +20,11 @@ trait HasExcelImportAction
 
     protected array $importClassAttributes = [];
 
+    public static function getDefaultName(): ?string
+    {
+        return 'import';
+    }
+
     public function use(?string $class = null, ...$attributes): static
     {
         $this->importClass = $class ?: DefaultImport::class;
@@ -25,38 +33,36 @@ trait HasExcelImportAction
         return $this;
     }
 
-    public static function getDefaultName(): ?string
-    {
-        return 'import';
-    }
-
-    public function action(Closure | string | null $action): static
-    {
-        if ($action !== 'importData') {
-            throw new \Exception('You\'re unable to override the action for this plugin');
-        }
-
-        $this->action = $this->importData();
-
-        return $this;
-    }
-
+    /**
+     * @throws Exception
+     */
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->icon('heroicon-o-arrow-down-tray')
             ->color('warning')
-            ->form(fn () => $this->getDefaultForm())
+            ->schema(fn() => $this->getDefaultForm())
             ->modalIcon('heroicon-o-arrow-down-tray')
             ->color('success')
             ->modalWidth('md')
             ->modalAlignment('center')
-            ->modalHeading(fn ($livewire) => __('excel-import::excel-import.import_action_heading'))
+            ->modalHeading(fn($livewire) => __('excel-import::excel-import.import_action_heading'))
             ->modalDescription(__('excel-import::excel-import.import_action_description'))
             ->modalFooterActionsAlignment('right')
             ->closeModalByClickingAway(false)
             ->action('importData');
+    }
+
+    public function action(Closure|string|null $action): static
+    {
+        if ($action !== 'importData') {
+            throw new Exception('You\'re unable to override the action for this plugin');
+        }
+
+        $this->action = $this->importData();
+
+        return $this;
     }
 
     private function importData(): Closure
@@ -84,10 +90,10 @@ trait HasExcelImportAction
             }
 
             if (method_exists($importObject, 'setAfterValidationMutator') &&
-               (isset($this->afterValidationMutator) || $this->shouldRetainBeforeValidationMutation)) {
+                (isset($this->afterValidationMutator) || $this->shouldRetainBeforeValidationMutation)) {
                 $afterValidationMutator = $this->shouldRetainBeforeValidationMutation ?
-                        $this->beforeValidationMutator :
-                        $this->afterValidationMutator;
+                    $this->beforeValidationMutator :
+                    $this->afterValidationMutator;
                 $importObject->setAfterValidationMutator($afterValidationMutator);
             }
 
@@ -98,29 +104,29 @@ trait HasExcelImportAction
                     call_user_func($this->afterImportClosure, $data, $livewire);
                 }
 
-                \Filament\Notifications\Notification::make()
+                Notification::make()
                     ->success()
                     ->title(__('excel-import::excel-import.import_success'))
                     ->body(__('excel-import::excel-import.import_success_message'))
                     ->send();
 
                 return true;
-            } catch (\EightyNine\ExcelImport\Exceptions\ImportStoppedException $e) {
+            } catch (ImportStoppedException $e) {
                 // Handle stopped import with user message
                 $notification = match ($e->getType()) {
-                    'warning' => \Filament\Notifications\Notification::make()
+                    'warning' => Notification::make()
                         ->warning()
                         ->title(__('excel-import::excel-import.import_warning'))
                         ->body($e->getUserMessage()),
-                    'info' => \Filament\Notifications\Notification::make()
+                    'info' => Notification::make()
                         ->info()
                         ->title(__('excel-import::excel-import.import_information'))
                         ->body($e->getUserMessage()),
-                    'success' => \Filament\Notifications\Notification::make()
+                    'success' => Notification::make()
                         ->success()
                         ->title(__('excel-import::excel-import.import_success'))
                         ->body($e->getUserMessage()),
-                    default => \Filament\Notifications\Notification::make()
+                    default => Notification::make()
                         ->danger()
                         ->title(__('excel-import::excel-import.import_failed'))
                         ->body($e->getUserMessage()),
@@ -130,7 +136,7 @@ trait HasExcelImportAction
 
                 // Stop the modal from closing if we have an error
                 $this->halt();
-                
+
                 return false;
             }
         };
